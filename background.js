@@ -1,4 +1,4 @@
-async function getShortlink(url) {
+async function getShortUrl(url) {
   try {
     let config = {
       method: 'POST',
@@ -13,18 +13,7 @@ async function getShortlink(url) {
     let response = await fetch('https://p-li/rest/v2/short-urls', config);
     if (response.ok) {
       let data = await response.json();
-      await navigator.clipboard.writeText(data.shortUrl);
-
-      chrome.notifications.create('NOTFICATION_ID', {
-        type: 'basic',
-        iconUrl: 'path',
-        title: 'notification title',
-        message: 'notification message',
-        priority: 2
-      })
-      setTimeout(function() {
-        chrome.notifications.clear('NOTFICATION_ID');
-      }, 2000);
+      return data.shortUrl;
     } else {
       alert("HTTP-Error: " + response.status);
     }
@@ -33,18 +22,23 @@ async function getShortlink(url) {
   }
 }
 
-chrome.action.onClicked.addListener((tab) => {
-  chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    func: getShortlink,
-    args: [tab.url],
-  },
-    (injectionResults) => {
-      for (const frameResult of injectionResults)
-        console.log('Shortlink: ' + frameResult.result);
-
-
-
-
-    });
-});
+processing = false
+chrome.runtime.onMessage.addListener(
+  function (request, sender, sendResponse) {
+    if (processing) return;
+    processing = true;
+    chrome.scripting.executeScript({
+      target: { tabId: request.tab.id },
+      func: getShortUrl,
+      args: [request.tab.url],
+    },
+      (results) => {
+        for (const result of results) {
+          console.log('Shortlink: ' + result.result);
+          sendResponse({ result: result.result });
+          processing = false;
+        }
+      });
+    return true;
+  }
+);
