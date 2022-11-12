@@ -7,7 +7,7 @@
       "service_worker": "background.js"
    },
    "host_permissions": [
-      "https://p-li/*"
+      "https://p-li.prod.mwam.local/*"
    ],
    "action": {
       "default_title": "Click to shorten the current URL",

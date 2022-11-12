@@ -10,7 +10,7 @@ async function getShortUrl(url) {
     };
 
     config["body"] = JSON.stringify({longUrl: url})
-    let response = await fetch('https://p-li/rest/v2/short-urls', config);
+    let response = await fetch('https://p-li.prod.mwam.local/rest/v2/short-urls', config);
     if (response.ok) {
       let data = await response.json();
       return data.shortUrl;
