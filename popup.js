@@ -1,21 +1,27 @@
-async function getCurrentTab() {
-    let queryOptions = { active: true, lastFocusedWindow: true };
-    // `tab` will either be a `tabs.Tab` instance or `undefined`.
-    let [tab] = await chrome.tabs.query(queryOptions);
-    return tab;
-}
-
-getCurrentTab().then((tab)=> {
-    chrome.runtime.sendMessage({ tab: tab }, function (response) {
-        var lastError = chrome.runtime.lastError;
-        if (lastError) {
-            console.log(lastError.message);
-            document.body.style.backgroundColor = 'red';
-            document.getElementById("message").innerText = "Failed!"
+function on_page_load() {
+    chrome.runtime.sendMessage({ "action": "getShortUrl" }, function (response) {
+        // If an error occurs while connecting to the extension, the callback will
+        // be called with no arguments and runtime.lastError will be set to the error message.
+        if (response === undefined && chrome.runtime.lastError) {
+            console.error('Shortlink: error: ' + chrome.runtime.lastError.message);
+            document.getElementById("page").style.backgroundColor = 'red';
+            document.getElementById("message").innerText = "Failed!\n" + chrome.runtime.lastError.message;
             return;
         }
-        navigator.clipboard.writeText(response.result);
-        document.body.style.backgroundColor = 'yellow';
-        document.getElementById("message").innerText = "Copied!"
+        if (response.error) {
+            console.error('Shortlink: error');
+            document.getElementById("page").style.backgroundColor = 'red';
+            document.getElementById("message").innerText = "Failed!\n" + response.message;
+            return
+        }
+
+        document.getElementById("page").style.backgroundColor = 'yellow';
+        document.getElementById("message").innerText = "Copied!\n" + response.shorturl;
     });
-})
+};
+
+// TODO: For some reason this is triggered twice for every plugin click.
+// The second invocation logs some errors, but otherwise harmless.
+document.addEventListener('DOMContentLoaded', function() {
+    on_page_load();
+}, { once: true });

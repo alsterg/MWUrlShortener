@@ -1,4 +1,12 @@
+async function getCurrentTab() {
+  let queryOptions = { active: true, lastFocusedWindow: true };
+  // `tab` will either be a `tabs.Tab` instance or `undefined`.
+  let [tab] = await chrome.tabs.query(queryOptions);
+  return tab;
+}
+
 async function getShortUrl(url) {
+  console.log('Shortlink: getShortUrl for ' + url)
   try {
     let config = {
       method: 'POST',
@@ -13,32 +21,56 @@ async function getShortUrl(url) {
     let response = await fetch('https://p-li.prod.mwam.local/rest/v2/short-urls', config);
     if (response.ok) {
       let data = await response.json();
-      return data.shortUrl;
+      let shortUrl = data.shortUrl
+      return { 'error': false, 'shorturl': shortUrl };
     } else {
-      alert("HTTP-Error: " + response.status);
+      console.error("Shortlink: HTTP-Error: " + response.status);
+      return { 'error': true, 'message': "HTTP-Error: " + response.status };
     }
   } catch (e) {
-    alert("Exception: " + e);
+    console.error("Shortlink: Exception: " + e);
+    return { 'error': true, 'message': e.message };
   }
 }
 
-processing = false
+processing = false  // Prevent processing while a previous message is being processed
 chrome.runtime.onMessage.addListener(
-  function (request, sender, sendResponse) {
+  function (message, sender, sendResponse) {
+    if (message.action != "getShortUrl") return;
     if (processing) return;
     processing = true;
-    chrome.scripting.executeScript({
-      target: { tabId: request.tab.id },
-      func: getShortUrl,
-      args: [request.tab.url],
-    },
-      (results) => {
-        for (const result of results) {
-          console.log('Shortlink: ' + result.result);
-          sendResponse({ result: result.result });
+
+    console.log("Shortlink: processing 'getShortUrl' event");
+    getCurrentTab().then((tab) => {
+      if (tab == undefined) {
+        console.error('Shortlink: failed to get current tab');
+        sendResponse({'error': true, 'message': 'failed to get current tab'});
+        processing = false;
+        return;
+      }
+      chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: getShortUrl,
+        args: [tab.url],
+      },
+        (result) => {  // we expect a single result
+          if (result[0].result.error) {
+            sendResponse(result[0].result);  // {error, message}
+            return
+          }
+          let shorturl = result[0].result.shorturl;
+          console.log('Shortlink: got short link: ' + shorturl);
+          chrome.tabs.sendMessage(tab.id, { 'action': 'copyToClipboard', 'shorturl': shorturl },
+            function (response) {
+              if (response.error)
+                sendResponse(response);
+              else
+                sendResponse({ 'error': false, 'shorturl': shorturl });
+            });
+
           processing = false;
-        }
-      });
+        });
+    });
     return true;
   }
 );
