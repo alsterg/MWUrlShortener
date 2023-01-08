@@ -1,0 +1,5 @@
+<gupdate xmlns='http://www.google.com/update2/response' protocol='2.0'>
+  <app appid='gbhfnejlleofkhmahabpdpiodnhmnooi'>
+    <updatecheck codebase='https://artifactory.mwam.local/artifactory/generic-corelib-local/MWUrlShortener/MWUrlShortener-v0.1.7.crx' version='0.1.7' />
+  </app>
+</gupdate>

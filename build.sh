@@ -1,0 +1,60 @@
+#!/bin/bash
+
+# get MajorMinorPatch from gitversion.json 
+MajorMinorPatch=`node -pe 'JSON.parse(process.argv[1]).MajorMinorPatch' "$(cat gitversion.json)"`
+SemVer=`node -pe 'JSON.parse(process.argv[1]).SemVer' "$(cat gitversion.json)"`
+CrxFilename=MWUrlShortener-v${SemVer}.crx
+CrxFile=artifacts/${CrxFilename}
+CrxKey=/tmp/MWUrlShortener/crxkey
+SrcFolder=src
+ExtensionId=gbhfnejlleofkhmahabpdpiodnhmnooi
+ArtifactsFolder=buildArtifacts
+
+echo "SDDT build.sh:"
+echo "MajorMinorPatch=${MajorMinorPatch}"
+echo "SemVer=${SemVer}"
+echo "CrxFilename=${CrxFilename}"
+echo "CrxFile=${CrxFile}"
+echo "CrxKey=${CrxKey}"
+echo "SrcFolder=${SrcFolder}"
+echo "ExtensionId=${ExtensionId}"
+echo "ArtifactsFolder=${ArtifactsFolder}"
+
+echo "working directory:"
+pwd
+
+echo "secrets in /tmp/MWUrlShortener:"
+ls -la /tmp/MWUrlShortener
+
+if [ ! -f "$CrxKey" ]; then
+    echo "${CrxKey} doesn't exist, cannot build crx file."
+    exit 1
+fi
+
+if [ ! -r "$CrxKey" ]; then
+    echo "${CrxKey} exist but it's not readable."
+    exit 2
+fi
+
+echo create a symlink from the secret to local key.pem file so build will pick it up
+ln -s ${CrxKey} $(pwd)/key.pem
+
+echo "set version field in package.json"
+npm version ${MajorMinorPatch} --no-git-tag-version --allow-same-version
+
+echo "build plugin"
+mkdir --verbose -p artifacts
+node node_modules/crx3/bin/crx3 --key ${CrxKey} --crx ${CrxFile} ${SrcFolder}
+
+
+echo "prepare manifest.xml:"
+cp --verbose manifest.xml ${ArtifactsFolder}
+sed -i "s/{ExtensionId}/${ExtensionId}/g" ${ArtifactsFolder}/manifest.xml
+sed -i "s/{CrxFilename}/${CrxFilename}/g" ${ArtifactsFolder}/manifest.xml
+sed -i "s/{MajorMinorPatch}/${MajorMinorPatch}/g" manifest.xml
+
+echo "moving build artifacts to ${ArtifactsFolder}"
+mkdir --verbose -p ${ArtifactsFolder}
+mv --verbose ${CrxFile} ${ArtifactsFolder}
+
+echo "build.sh: finished"
