@@ -1,31 +1,62 @@
-@Library('jenkins-shared-library@feature/git-improvements') _
-import com.mwam.jenkins.build.*
-import com.mwam.jenkins.helpers.S2iBuilderList
-import com.mwam.jenkins.helpers.GitTag
+import com.mwam.jenkins.build.NpmBuild
+import com.mwam.jenkins.helpers.*
+import com.mwam.jenkins.ioc.ContextRegistry
 
-// prefix git tags with "build-", so that they do not interfere with gitversion
-GitTag.Prefix = "build-"
+ContextRegistry.registerScript(this)
 
-class BRANCH {
-	static final MASTER = "master";
-	static final DEVELOP = "develop";
+def artifactoryPath = "/artifactory/generic-corelib-local/MWUrlShortener/"
+publishBranches = ["master"]
+
+library_init()
+GitVersion.setShouldPublish(publishBranches)
+
+def npm = new NpmBuild(artifactoryPath)
+def agent = new BuildAgent()
+    .addGitversionContainer()
+    .addContainers(npm.getBuildContainer())
+
+agent._podSpec["spec"]["volumes"].add([
+    "name": "chrome-plugin-private-key",
+    "secret": ["secretName": "chrome-plugin-private-key"]
+])
+
+agent._podSpec["spec"]["containers"].find { c -> c.name == "npm" }["volumeMounts"] = [[
+    "mountPath": "/tmp/plugin/",
+    "name": "chrome-plugin-private-key"
+]]
+
+agent.RunInAgent {
+  Script steps = ContextRegistry.getScript()
+
+  steps.stage("setup") {
+    steps.container("gitversion") {
+      steps.sh "gitversion > gitversion.yaml"
+    }
+
+    steps.container("npm") {
+      steps.sh "npm install"
+    }
+  }
+
+  steps.stage("build") {
+    steps.container("npm") {
+      steps.sh "npm run build"
+    }
+  }
+ 
+  if (Publish.instance.shouldPublish) {
+    steps.stage('publish') {
+      steps.container('npm') {
+        steps.withCredentials([steps.usernamePassword(
+              credentialsId: this.OsEnv.getJenkinsSecret('Artifactory'),
+              usernameVariable: "artUser",
+              passwordVariable: "artPass")]) {
+          steps.sh(label: 'Publish - push', script: """
+            cd buildArtifacts && find . -type f -exec \
+            curl -X PUT -H "X-Requested-With: XMLHttpRequest" -u ${steps.artUser}:${steps.artPass} -T {} "https://artifactory.mwam.local/artifactory/generic-corelib-local/MWUrlShortener/{}" \;
+          """)
+        }
+      }
+    }
+  }
 }
-
-// jenkins will build all the branches with "Jenkinsfile" file from the repo
-// this list tells jenkins which branches/builds to deploy
-def publishBranches = [
-  BRANCH.MASTER,
-  // BRANCH.DEVELOP
-]
-
-def currentBranch = env.BRANCH_NAME
-
-println "currentBranch=$currentBranch"
-
-// https://bitbucket.mwam.local/projects/CORE/repos/jenkins-shared-library/browse/src/com/mwam/jenkins/build/NpmBuild.groovy?at=cdd071be771e6bb227a8e4ccd083b27ca190aec5
-
-def artifactoryPath = "/artifactory/generic-corelib-local/chrome/"
-
-uiBuild = new NpmBuild(artifactoryPath)
-
-automatic_release(uiBuild, publishBranches)

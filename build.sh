@@ -3,17 +3,15 @@
 # get MajorMinorPatch from gitversion.json 
 MajorMinorPatch=`node -pe 'JSON.parse(process.argv[1]).MajorMinorPatch' "$(cat gitversion.json)"`
 SemVer=`node -pe 'JSON.parse(process.argv[1]).SemVer' "$(cat gitversion.json)"`
-CrxFilename=MWUrlShortener-v${SemVer}.crx
-CrxFile=artifacts/${CrxFilename}
-CrxKey=/tmp/MWUrlShortener/crxkey
+CrxFile=MWUrlShortener-v${SemVer}.crx
+CrxKey=/tmp/plugin/mwurlshortener
 SrcFolder=src
-ExtensionId=gbhfnejlleofkhmahabpdpiodnhmnooi
+ExtensionId=aomjdmiblhjgjjfkbianlnmjfmjhdhdc
 ArtifactsFolder=buildArtifacts
 
 echo "SDDT build.sh:"
 echo "MajorMinorPatch=${MajorMinorPatch}"
 echo "SemVer=${SemVer}"
-echo "CrxFilename=${CrxFilename}"
 echo "CrxFile=${CrxFile}"
 echo "CrxKey=${CrxKey}"
 echo "SrcFolder=${SrcFolder}"
@@ -24,7 +22,7 @@ echo "working directory:"
 pwd
 
 echo "secrets in /tmp/MWUrlShortener:"
-ls -la /tmp/MWUrlShortener
+ls -la /tmp/plugin
 
 if [ ! -f "$CrxKey" ]; then
     echo "${CrxKey} doesn't exist, cannot build crx file."
@@ -43,14 +41,14 @@ echo "set version field in package.json"
 npm version ${MajorMinorPatch} --no-git-tag-version --allow-same-version
 
 echo "build plugin"
-mkdir --verbose -p artifacts
+sed -i "s/{MajorMinorPatch}/${MajorMinorPatch}/g" src/manifest.json
 node node_modules/crx3/bin/crx3 --key ${CrxKey} --crx ${CrxFile} ${SrcFolder}
 
-
 echo "prepare manifest.xml:"
+mkdir --verbose -p ${ArtifactsFolder}
 cp --verbose manifest.xml ${ArtifactsFolder}
 sed -i "s/{ExtensionId}/${ExtensionId}/g" ${ArtifactsFolder}/manifest.xml
-sed -i "s/{CrxFilename}/${CrxFilename}/g" ${ArtifactsFolder}/manifest.xml
+sed -i "s/{CrxFile}/${CrxFile}/g" ${ArtifactsFolder}/manifest.xml
 sed -i "s/{MajorMinorPatch}/${MajorMinorPatch}/g" manifest.xml
 
 echo "moving build artifacts to ${ArtifactsFolder}"
