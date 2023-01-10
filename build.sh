@@ -49,7 +49,7 @@ mkdir --verbose -p ${ArtifactsFolder}
 cp --verbose manifest.xml ${ArtifactsFolder}
 sed -i "s/{ExtensionId}/${ExtensionId}/g" ${ArtifactsFolder}/manifest.xml
 sed -i "s/{CrxFile}/${CrxFile}/g" ${ArtifactsFolder}/manifest.xml
-sed -i "s/{MajorMinorPatch}/${MajorMinorPatch}/g" manifest.xml
+sed -i "s/{MajorMinorPatch}/${MajorMinorPatch}/g" ${ArtifactsFolder}/manifest.xml
 
 echo "moving build artifacts to ${ArtifactsFolder}"
 mkdir --verbose -p ${ArtifactsFolder}
