@@ -52,7 +52,7 @@ agent.RunInAgent {
               usernameVariable: "artUser",
               passwordVariable: "artPass")]) {
           steps.sh(label: 'Publish - push', script: """
-            cd buildArtifacts && find . -type f -exec \
+            cd buildArtifacts && find . -name *.crx -type f -exec \
             curl -X PUT -H "X-Requested-With: XMLHttpRequest" -u ${steps.artUser}:${steps.artPass} -T {} "https://artifactory.mwam.local/artifactory/generic-corelib-local/MWUrlShortener/{}" \;
           """)
         }

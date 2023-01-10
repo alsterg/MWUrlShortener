@@ -4,7 +4,7 @@
 MajorMinorPatch=`node -pe 'JSON.parse(process.argv[1]).MajorMinorPatch' "$(cat gitversion.json)"`
 SemVer=`node -pe 'JSON.parse(process.argv[1]).SemVer' "$(cat gitversion.json)"`
 CrxFile=MWUrlShortener-v${SemVer}.crx
-CrxKey=/tmp/plugin/mwurlshortener
+CrxKey=/tmp/plugin/crxkey
 SrcFolder=src
 ExtensionId=aomjdmiblhjgjjfkbianlnmjfmjhdhdc
 ArtifactsFolder=buildArtifacts
